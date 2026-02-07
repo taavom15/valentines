@@ -112,7 +112,7 @@
         <h1 class="romantic-font text-4xl md:text-5xl text-rose-600 mb-4">So you want to be my Valentine?</h1>
         <p class="text-rose-400 mb-4 text-sm md:text-base">Navigate the heart to the gift box!</p>
         
-        <canvas id="mazeCanvas" width="400" height="400"></canvas>
+        <canvas id="mazeCanvas" width="300" height="300"></canvas>
 
         <!-- Controls for Mobile -->
         <div id="controls" class="mt-6 md:hidden" style="padding-bottom: 20px;">
@@ -158,7 +158,7 @@
         /** MAZE LOGIC **/
         const canvas = document.getElementById('mazeCanvas');
         const ctx = canvas.getContext('2d');
-        const cellSize = 25;
+        const cellSize = 30;
         const cols = Math.floor(canvas.width / cellSize);
         const rows = Math.floor(canvas.height / cellSize);
         let grid = [];
