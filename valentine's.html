@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A Journey to My Valentine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Poppins:wght@400;600&display=swap');
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #fff5f5;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        .romantic-font {
+            font-family: 'Dancing Script', cursive;
+        }
+
+        canvas {
+            image-rendering: pixelated;
+            max-width: 100vw;
+            max-height: 100vh;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(244, 63, 94, 0.2);
+            background-color: white;
+        }
+
+        .heart-particle {
+            position: absolute;
+            pointer-events: none;
+            animation: float 3s ease-in forwards;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-100px) scale(0); opacity: 0; }
+        }
+
+        .shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        #joypad {
+            display: grid;
+            grid-template-areas: 
+                ". up ."
+                "left . right"
+                ". down .";
+            gap: 8px;
+        }
+
+        .joy-btn {
+            width: 50px;
+            height: 50px;
+            background: #fda4af;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            user-select: none;
+            active:scale-90;
+            transition: transform 0.1s;
+        }
+
+        #giftImage {
+            display: none;
+            width: 300px;
+            height: 300px;
+            margin-bottom: 20px;
+            animation: bounce 1s infinite;
+        }
+
+        #giftImage.show {
+            display: block;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
+
+    <!-- Game Screen -->
+    <div id="game-container" class="flex flex-col items-center text-center">
+        <h1 class="romantic-font text-4xl md:text-5xl text-rose-600 mb-4">So you want to be my Valentine?</h1>
+        <p class="text-rose-400 mb-4 text-sm md:text-base">Navigate the heart to the gift box!</p>
+        
+        <canvas id="mazeCanvas" width="400" height="400"></canvas>
+
+        <!-- Controls for Mobile -->
+        <div id="controls" class="mt-6 md:hidden">
+            <div id="joypad">
+                <div style="grid-area: up" class="joy-btn" onpointerdown="move('up')">▲</div>
+                <div style="grid-area: left" class="joy-btn" onpointerdown="move('left')">◀</div>
+                <div style="grid-area: right" class="joy-btn" onpointerdown="move('right')">▶</div>
+                <div style="grid-area: down" class="joy-btn" onpointerdown="move('down')">▼</div>
+            </div>
+        </div>
+        <!-- <p class="hidden md:block mt-4 text-rose-300 text-xs">Use Arrow Keys or WASD to move</p> -->
+    </div>
+
+    <!-- Final Proposal Screen (Hidden by default) -->
+    <div id="proposal-screen" class="fixed inset-0 bg-rose-50 flex flex-col items-center justify-center p-6 text-center z-50">
+        <div id="proposal-content" class="max-w-md w-full">
+            <img id="giftImage" class="mx-auto" src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExcDIwNW5ta3NnamFnNnphdWcyaTV0ZjZtZzF5Y3ByNDlxaWFtcWZuYSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/MFIsOqzodLr7ewnkUb/giphy.gif" alt="Gift">
+            <div class="text-6xl mb-6">💝</div>
+            <h2 class="romantic-font text-5xl md:text-6xl text-rose-600 mb-8">Will you be my Valentine?</h2>
+            
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-6 mt-10">
+                <button id="yesBtn" class="bg-rose-500 hover:bg-rose-600 text-white font-bold py-4 px-10 rounded-full shadow-lg transition-all duration-200 text-xl min-w-[140px]">
+                    YES!
+                </button>
+                <button id="noBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-600 font-bold py-4 px-10 rounded-full transition-all duration-200 text-xl">
+                    No
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Celebration Screen (Hidden by default) -->
+    <div id="celebration-screen" class="hidden fixed inset-0 bg-white flex flex-col items-center justify-center p-6 text-center z-[60]">
+        <canvas id="confettiCanvas" class="fixed inset-0 pointer-events-none bg-transparent shadow-none"></canvas>
+        <div class="z-10">
+            <div class="text-8xl mb-6 animate-bounce">💖</div>
+            <img id="celeb" />
+            <p class="text-2xl text-rose-400 italic mt-4">We have a date 💖</p>
+        </div>
+    </div>
+
+    <script>
+        /** MAZE LOGIC **/
+        const canvas = document.getElementById('mazeCanvas');
+        const ctx = canvas.getContext('2d');
+        const cellSize = 25;
+        const cols = Math.floor(canvas.width / cellSize);
+        const rows = Math.floor(canvas.height / cellSize);
+        let grid = [];
+        let current;
+        let stack = [];
+        let player = { x: 0, y: 0 };
+        let goal = { x: cols - 1, y: rows - 1 };
+        let gameActive = true;
+
+        class Cell {
+            constructor(r, c) {
+                this.r = r;
+                this.c = c;
+                this.walls = [true, true, true, true]; // top, right, bottom, left
+                this.visited = false;
+            }
+
+            checkNeighbors() {
+                let neighbors = [];
+                let top = grid[index(this.r - 1, this.c)];
+                let right = grid[index(this.r, this.c + 1)];
+                let bottom = grid[index(this.r + 1, this.c)];
+                let left = grid[index(this.r, this.c - 1)];
+
+                if (top && !top.visited) neighbors.push(top);
+                if (right && !right.visited) neighbors.push(right);
+                if (bottom && !bottom.visited) neighbors.push(bottom);
+                if (left && !left.visited) neighbors.push(left);
+
+                if (neighbors.length > 0) {
+                    let r = Math.floor(Math.random() * neighbors.length);
+                    return neighbors[r];
+                } else {
+                    return undefined;
+                }
+            }
+
+            show() {
+                let x = this.c * cellSize;
+                let y = this.r * cellSize;
+                ctx.strokeStyle = "#fda4af";
+                ctx.lineWidth = 2;
+                if (this.walls[0]) line(x, y, x + cellSize, y);
+                if (this.walls[1]) line(x + cellSize, y, x + cellSize, y + cellSize);
+                if (this.walls[2]) line(x + cellSize, y + cellSize, x, y + cellSize);
+                if (this.walls[3]) line(x, y + cellSize, x, y);
+            }
+        }
+
+        function index(r, c) {
+            if (r < 0 || c < 0 || r > rows - 1 || c > cols - 1) return -1;
+            return c + r * cols;
+        }
+
+        function line(x1, y1, x2, y2) {
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+        }
+
+        function removeWalls(a, b) {
+            let x = a.c - b.c;
+            if (x === 1) {
+                a.walls[3] = false;
+                b.walls[1] = false;
+            } else if (x === -1) {
+                a.walls[1] = false;
+                b.walls[3] = false;
+            }
+            let y = a.r - b.r;
+            if (y === 1) {
+                a.walls[0] = false;
+                b.walls[2] = false;
+            } else if (y === -1) {
+                a.walls[2] = false;
+                b.walls[0] = false;
+            }
+        }
+
+        function setupMaze() {
+            grid = [];
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    grid.push(new Cell(r, c));
+                }
+            }
+            current = grid[0];
+            generateMaze();
+        }
+
+        function generateMaze() {
+            while (true) {
+                current.visited = true;
+                let next = current.checkNeighbors();
+                if (next) {
+                    next.visited = true;
+                    stack.push(current);
+                    removeWalls(current, next);
+                    current = next;
+                } else if (stack.length > 0) {
+                    current = stack.pop();
+                } else {
+                    break;
+                }
+            }
+            draw();
+        }
+
+        function draw() {
+            if (!gameActive) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < grid.length; i++) {
+                grid[i].show();
+            }
+
+            // Draw Goal
+            ctx.font = "18px Arial";
+            ctx.fillText("🎁", goal.x * cellSize + 2, goal.y * cellSize + 18);
+
+            // Draw Player (Heart)
+            ctx.font = "18px Arial";
+            ctx.fillText("❤️", player.x * cellSize + 2, player.y * cellSize + 18);
+        }
+
+        function move(dir) {
+            if (!gameActive) return;
+            let currentCell = grid[index(player.y, player.x)];
+            let moved = false;
+
+            if (dir === 'up' && !currentCell.walls[0]) { player.y--; moved = true; }
+            if (dir === 'right' && !currentCell.walls[1]) { player.x++; moved = true; }
+            if (dir === 'down' && !currentCell.walls[2]) { player.y++; moved = true; }
+            if (dir === 'left' && !currentCell.walls[3]) { player.x--; moved = true; }
+
+            if (moved) {
+                spawnHeartTrail(player.x * cellSize + cellSize/2, player.y * cellSize + cellSize/2);
+                draw();
+                checkWin();
+            }
+        }
+
+        function checkWin() {
+            if (player.x === goal.x && player.y === goal.y) {
+                gameActive = false;
+                setTimeout(() => {
+                    document.getElementById('game-container').classList.add('hidden');
+                    document.getElementById('proposal-screen').classList.remove('hidden');
+                }, 500);
+            }
+        }
+
+        function spawnHeartTrail(x, y) {
+            const rect = canvas.getBoundingClientRect();
+            const heart = document.createElement('div');
+            heart.innerHTML = "❤️";
+            heart.className = "heart-particle text-xs";
+            heart.style.left = (rect.left + x) + "px";
+            heart.style.top = (rect.top + y) + "px";
+            document.body.appendChild(heart);
+            setTimeout(() => heart.remove(), 3000);
+        }
+
+        // Key Listeners
+        window.addEventListener('keydown', (e) => {
+            if (['ArrowUp', 'w', 'W'].includes(e.key)) move('up');
+            if (['ArrowRight', 'd', 'D'].includes(e.key)) move('right');
+            if (['ArrowDown', 's', 'S'].includes(e.key)) move('down');
+            if (['ArrowLeft', 'a', 'A'].includes(e.key)) move('left');
+        });
+
+
+        /** PROPOSAL LOGIC **/
+        const yesBtn = document.getElementById('yesBtn');
+        const noBtn = document.getElementById('noBtn');
+        let noClickCount = 0;
+        let yesScale = 1;
+
+        const messages = [
+            "Are you sure?",
+            "Really sure?",
+            "Think about it again!",
+            "Last chance!",
+            "🥺",
+            "Please? 🙏",
+            "Last chance!",
+            "Laaaaaast chaaanceeee"
+        ];
+
+        noBtn.addEventListener('click', () => {
+            noClickCount++;
+            yesScale += 0.4;
+            yesBtn.style.transform = `scale(${yesScale})`;
+            
+            // Change No button text randomly
+            if (noClickCount < messages.length) {
+                noBtn.innerText = messages[noClickCount - 1];
+            }
+
+            // Move No button slightly to be annoying
+            noBtn.style.position = "relative";
+            noBtn.style.left = (Math.random() * 40 - 20) + "px";
+            noBtn.style.top = (Math.random() * 40 - 20) + "px";
+
+            // Show gift when reaching last message
+            if (noClickCount >= 8) {
+                document.getElementById('giftImage').classList.add('show');
+                noBtn.style.display = 'none';
+            }
+
+            // Add shake to screen
+            document.getElementById('proposal-content').classList.add('shake');
+            setTimeout(() => {
+                document.getElementById('proposal-content').classList.remove('shake');
+            }, 500);
+        });
+
+        yesBtn.addEventListener('click', () => {
+            document.getElementById('proposal-screen').classList.add('hidden');
+            document.getElementById('celebration-screen').classList.remove('hidden');
+            startConfetti();
+            startCelebrationGifs();
+        });
+
+
+        /** CONFETTI LOGIC **/
+        const confettiCanvas = document.getElementById('confettiCanvas');
+        const cctx = confettiCanvas.getContext('2d');
+        let particles = [];
+
+        /** CELEBRATION GIFS LOGIC **/
+        const celeb_gifs = [
+            "https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExZHJnbm1jd2syeXo1NndzMGkybWF6YXV2cWQyN2hkamQyZ2tmMDl4ZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Oy7Bk8PXllKqZTeicf/giphy.gif",
+            "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExdmkyMWtpdTA3dDN4MHlmeW4wdWE1NXo1MDduYzBqa2ducW1lNzVjMyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/pJnsdD3Q8MVo86EKN8/giphy.gif",
+            "https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3eXJlbnE5Y2p3M3A3dm9wMWZjcHVleXZyeDVva25tdm40dTFsYnU4YyZlcD12MV9naWZzX3NlYXJjaCZjdD1n/EZh4xaO25Sf08D1PZa/giphy.gif",
+            "https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExeWczcmF6cXVyeXA0Y29jODgxam11ZnhsZ21pemtxdHJ2c2R0YjBoMiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/N97DxHrADyYGovSlRN/giphy.gif",
+            "https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExbGFseGZoajZ1OHhsYWNrbHNpa3BvZWlrN21oMXZ3dml4bGR0Ymg2diZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/1ndLCzrbROHba/giphy.gif",
+            "https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3cmZzejQyd3hzdXNseDBrZmNrNWhrcWdzejUxcjZkcGtrODkxbXA1eCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/hrwmeFmQ4K2dCvI8aa/giphy.gif",
+            "https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExZ3I4ZHFvbDJjZHJjNDA0YmxhZWV5b252NXBreGE2MTNnYnJ2YTFoOSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/itMtKey6cL6MTyuqhB/giphy.gif",
+            "https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExZ25scjAzeG1xN3U5NjVsZzhnY3BrMGs0NzJsaGNxaDFkNGg0ZG5kNSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/avaW8GP2Yu6ay4rRLQ/giphy.gif",
+            "https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3Ymx3NHg2dXk3ZHYxbG5nN2h6eDJ5dTV1dGxlcmcyc3hoM2Z0N3R2NCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/58FXLvq0603NbLq4hw/giphy.gif",
+            "https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3MGJ6NGJ5MHlhMnp1cmwxeXl4a3BvYmZieXNzbjh1eWltb2w5MXVyaCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/8PySW3NTCqh9GJVe58/giphy.gif"
+        ];
+        let currentGifIndex = 0;
+        let gifInterval;
+
+        function startConfetti() {
+            confettiCanvas.width = window.innerWidth;
+            confettiCanvas.height = window.innerHeight;
+            for (let i = 0; i < 150; i++) {
+                particles.push({
+                    x: Math.random() * confettiCanvas.width,
+                    y: Math.random() * confettiCanvas.height - confettiCanvas.height,
+                    size: Math.random() * 10 + 5,
+                    color: `hsl(${Math.random() * 20 + 340}, 100%, ${Math.random() * 20 + 60}%)`,
+                    speed: Math.random() * 3 + 2,
+                    angle: Math.random() * 6.28
+                });
+            }
+            requestAnimationFrame(updateConfetti);
+        }
+
+        function updateConfetti() {
+            cctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+            particles.forEach(p => {
+                p.y += p.speed;
+                p.x += Math.sin(p.angle) * 2;
+                p.angle += 0.05;
+                
+                cctx.fillStyle = p.color;
+                if (Math.random() > 0.5) {
+                    // Draw Heart
+                    cctx.font = `${p.size}px Arial`;
+                    cctx.fillText("❤️", p.x, p.y);
+                } else {
+                    cctx.fillRect(p.x, p.y, p.size, p.size);
+                }
+
+                if (p.y > confettiCanvas.height) p.y = -20;
+            });
+            requestAnimationFrame(updateConfetti);
+        }
+
+        function startCelebrationGifs() {
+            if (celeb_gifs.length === 0) return;
+            
+            const celebImg = document.getElementById('celeb');
+            currentGifIndex = 0;
+            
+            // Show the first GIF immediately
+            celebImg.src = celeb_gifs[currentGifIndex];
+            
+            // Change GIF every 1.5 seconds
+            gifInterval = setInterval(() => {
+                currentGifIndex = (currentGifIndex + 1) % celeb_gifs.length;
+                celebImg.src = celeb_gifs[currentGifIndex];
+            }, 1500);
+        }
+
+        window.onload = setupMaze;
+    </script>
+</body>
+</html>
