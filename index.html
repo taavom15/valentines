@@ -124,6 +124,9 @@
             </div>
         </div>
         <!-- <p class="hidden md:block mt-4 text-rose-300 text-xs">Use Arrow Keys or WASD to move</p> -->
+        <button id="skip-button" class="hidden mt-8 bg-rose-400 hover:bg-rose-500 text-white font-semibold py-2 px-6 rounded-full shadow-md transition-all duration-200" style="animation: bounce 1s infinite;">
+            Yeah I'm not going to do this
+        </button>
     </div>
 
     <!-- Final Proposal Screen (Hidden by default) -->
@@ -509,6 +512,22 @@
                 celebImg.src = celeb_gifs[currentGifIndex];
             }, 1500);
         }
+
+        /** SKIP BUTTON LOGIC **/
+        const skipBtn = document.getElementById('skip-button');
+
+        // Show button after 6 seconds
+        setTimeout(() => {
+            if (gameActive) {
+                skipBtn.classList.remove('hidden');
+            }
+        }, 6000);
+
+        skipBtn.addEventListener('click', () => {
+            gameActive = false;
+            document.getElementById('game-container').classList.add('hidden');
+            document.getElementById('proposal-screen').classList.remove('hidden');
+        });
 
         window.onload = setupMaze;
     </script>
