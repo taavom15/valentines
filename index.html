@@ -61,8 +61,7 @@
                 "left . right"
                 ". down .";
             gap: 4px;
-            padding-bottom: 40px;
-            margin-bottom: env(safe-area-inset-bottom);
+            padding-bottom: calc(60px + env(safe-area-inset-bottom));
         }
 
         .joy-btn {
@@ -116,7 +115,7 @@
         <canvas id="mazeCanvas" width="400" height="400"></canvas>
 
         <!-- Controls for Mobile -->
-        <div id="controls" class="mt-6 md:hidden">
+        <div id="controls" class="mt-6 md:hidden" style="padding-bottom: 20px;">
             <div id="joypad">
                 <div style="grid-area: up" class="joy-btn" data-direction="up">▲</div>
                 <div style="grid-area: left" class="joy-btn" data-direction="left">◀</div>
